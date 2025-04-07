@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منتجات رائعة | Amazing Products</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="hero">
+        <div class="hero-content">
+            <h1>منتجات رائعة | Amazing Products</h1>
+            <p class="subtitle">اكتشف مجموعة مميزة من المنتجات الرائعة</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="input-section">
+            <input type="text" id="productUrl" class="input-field">
+            <div class="file-upload">
+                <input type="file" id="productImage" accept="image/*">
+            </div>
+            <textarea id="productDescription" class="input-field"></textarea>
+            <button id="addProduct" class="add-button">إضافة منتج</button>
+        </div>
+
+        <div class="products-grid" id="productsContainer"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
