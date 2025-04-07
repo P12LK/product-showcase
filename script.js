@@ -1,11 +1,25 @@
+const firebaseConfig = {
+    apiKey: "AIzaSyBCIjcNPlUVDjFY27XqlkVOEdBCNpwbznc",
+    authDomain: "product-showcase-3c038.firebaseapp.com",
+    databaseURL: "https://product-showcase-3c038-default-rtdb.firebaseio.com",
+    projectId: "product-showcase-3c038",
+    storageBucket: "product-showcase-3c038.appspot.com",
+    messagingSenderId: "916469503161",
+    appId: "1:916469503161:web:e44412c3f844d1b00c7768",
+    measurementId: "G-QQEH2G25NV"
+};
+
 class ProductManager {
     constructor() {
-        this.products = JSON.parse(localStorage.getItem('products')) || [];
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        this.database = firebase.database();
         this.init();
+        this.loadProducts();
     }
 
     init() {
-        this.renderProducts();
         document.getElementById('addProduct').addEventListener('click', () => this.addProduct());
     }
 
@@ -26,15 +40,15 @@ class ProductManager {
                 id: Date.now(),
                 url,
                 image: imageBase64,
-                description
+                description,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
             };
 
-            this.products.push(product);
-            this.saveProducts();
-            this.renderProducts();
+            await this.database.ref('products').push(product);
             this.clearInputs();
         } catch (error) {
             console.error('Error adding product:', error);
+            alert('حدث خطأ أثناء إضافة المنتج');
         }
     }
 
@@ -47,14 +61,13 @@ class ProductManager {
         });
     }
 
-    deleteProduct(id) {
-        this.products = this.products.filter(product => product.id !== id);
-        this.saveProducts();
-        this.renderProducts();
-    }
-
-    saveProducts() {
-        localStorage.setItem('products', JSON.stringify(this.products));
+    async deleteProduct(key) {
+        try {
+            await this.database.ref('products/' + key).remove();
+        } catch (error) {
+            console.error('Error deleting product:', error);
+            alert('حدث خطأ أثناء حذف المنتج');
+        }
     }
 
     clearInputs() {
@@ -63,25 +76,37 @@ class ProductManager {
         document.getElementById('productDescription').value = '';
     }
 
-    renderProducts() {
-        const container = document.getElementById('productsContainer');
-        container.innerHTML = '';
-
-        this.products.forEach(product => {
-            const productElement = document.createElement('div');
-            productElement.className = 'product-card';
-            productElement.innerHTML = `
-                <a href="${product.url}" target="_blank">
-                    <img src="${product.image}" alt="صورة المنتج" class="product-image">
-                </a>
-                <div class="product-info">
-                    <p class="product-description">${product.description}</p>
-                    <button class="delete-btn" onclick="productManager.deleteProduct(${product.id})">
-                        حذف المنتج
-                    </button>
-                </div>
-            `;
-            container.appendChild(productElement);
+    loadProducts() {
+        const productsRef = this.database.ref('products');
+        productsRef.on('value', (snapshot) => {
+            const container = document.getElementById('productsContainer');
+            container.innerHTML = '';
+            
+            if (snapshot.exists()) {
+                const products = [];
+                snapshot.forEach((child) => {
+                    products.push({ key: child.key, ...child.val() });
+                });
+                
+                products.sort((a, b) => b.timestamp - a.timestamp);
+                
+                products.forEach(product => {
+                    const productElement = document.createElement('div');
+                    productElement.className = 'product-card';
+                    productElement.innerHTML = `
+                        <a href="${product.url}" target="_blank">
+                            <img src="${product.image}" alt="صورة المنتج" class="product-image">
+                        </a>
+                        <div class="product-info">
+                            <p class="product-description">${product.description}</p>
+                            <button class="delete-btn" onclick="productManager.deleteProduct('${product.key}')">
+                                حذف المنتج
+                            </button>
+                        </div>
+                    `;
+                    container.appendChild(productElement);
+                });
+            }
         });
     }
 }
