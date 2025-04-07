@@ -11,10 +11,10 @@ const firebaseConfig = {
 
 class ProductManager {
     constructor() {
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
+        firebase.initializeApp(firebaseConfig);
         this.database = firebase.database();
+        this.storage = firebase.storage();
+        this.productsRef = this.database.ref('products');
         this.init();
         this.loadProducts();
     }
@@ -34,17 +34,21 @@ class ProductManager {
                 return;
             }
 
-            const imageBase64 = await this.convertImageToBase64(imageFile);
-            
-            const product = {
-                url: url,
-                image: imageBase64,
-                description: description,
-                timestamp: Date.now()
-            };
+            // Upload image to Firebase Storage
+            const timestamp = Date.now();
+            const storageRef = this.storage.ref();
+            const imageRef = storageRef.child(`products/${timestamp}_${imageFile.name}`);
+            const snapshot = await imageRef.put(imageFile);
+            const imageUrl = await snapshot.ref.getDownloadURL();
 
-            const newProductRef = this.database.ref('products').push();
-            await newProductRef.set(product);
+            // Save product data to Realtime Database
+            await this.productsRef.push({
+                url: url,
+                imageUrl: imageUrl,
+                description: description,
+                timestamp: timestamp
+            });
+
             this.clearInputs();
             alert('تم إضافة المنتج بنجاح');
         } catch (error) {
@@ -53,18 +57,16 @@ class ProductManager {
         }
     }
 
-    convertImageToBase64(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-        });
-    }
-
-    async deleteProduct(key) {
+    async deleteProduct(key, imageUrl) {
         try {
-            await this.database.ref('products/' + key).remove();
+            // Delete from Realtime Database
+            await this.productsRef.child(key).remove();
+
+            // Delete from Storage if URL exists
+            if (imageUrl) {
+                const imageRef = this.storage.refFromURL(imageUrl);
+                await imageRef.delete();
+            }
         } catch (error) {
             console.error('Error deleting product:', error);
             alert('حدث خطأ أثناء حذف المنتج');
@@ -78,8 +80,7 @@ class ProductManager {
     }
 
     loadProducts() {
-        const productsRef = this.database.ref('products');
-        productsRef.on('value', (snapshot) => {
+        this.productsRef.on('value', (snapshot) => {
             const container = document.getElementById('productsContainer');
             container.innerHTML = '';
             
@@ -96,11 +97,11 @@ class ProductManager {
                     productElement.className = 'product-card';
                     productElement.innerHTML = `
                         <a href="${product.url}" target="_blank">
-                            <img src="${product.image}" alt="صورة المنتج" class="product-image">
+                            <img src="${product.imageUrl}" alt="صورة المنتج" class="product-image">
                         </a>
                         <div class="product-info">
                             <p class="product-description">${product.description}</p>
-                            <button class="delete-btn" onclick="productManager.deleteProduct('${product.key}')">
+                            <button class="delete-btn" onclick="productManager.deleteProduct('${product.key}', '${product.imageUrl}')">
                                 حذف المنتج
                             </button>
                         </div>
