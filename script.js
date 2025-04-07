@@ -24,30 +24,31 @@ class ProductManager {
     }
 
     async addProduct() {
-        const url = document.getElementById('productUrl').value;
-        const imageFile = document.getElementById('productImage').files[0];
-        const description = document.getElementById('productDescription').value;
-
-        if (!url || !imageFile || !description) {
-            alert('الرجاء ملء جميع الحقول');
-            return;
-        }
-
         try {
+            const url = document.getElementById('productUrl').value;
+            const imageFile = document.getElementById('productImage').files[0];
+            const description = document.getElementById('productDescription').value;
+
+            if (!url || !imageFile || !description) {
+                alert('الرجاء ملء جميع الحقول');
+                return;
+            }
+
             const imageBase64 = await this.convertImageToBase64(imageFile);
             
             const product = {
-                id: Date.now(),
-                url,
+                url: url,
                 image: imageBase64,
-                description,
-                timestamp: firebase.database.ServerValue.TIMESTAMP
+                description: description,
+                timestamp: Date.now()
             };
 
-            await this.database.ref('products').push(product);
+            const newProductRef = this.database.ref('products').push();
+            await newProductRef.set(product);
             this.clearInputs();
+            alert('تم إضافة المنتج بنجاح');
         } catch (error) {
-            console.error('Error adding product:', error);
+            console.error('Error:', error);
             alert('حدث خطأ أثناء إضافة المنتج');
         }
     }
