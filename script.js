@@ -13,7 +13,6 @@ class ProductManager {
     constructor() {
         firebase.initializeApp(firebaseConfig);
         this.database = firebase.database();
-        this.storage = firebase.storage();
         this.productsRef = this.database.ref('products');
         this.visitorsRef = this.database.ref('visitors');
         this.init();
@@ -53,18 +52,20 @@ class ProductManager {
             }
 
             const imageBase64 = await this.convertToBase64(imageFile);
-            let videoUrl = '';
-
+            let videoBase64 = '';
+            
             if (videoFile) {
-                const videoRef = this.storage.ref('videos/' + Date.now() + '_' + videoFile.name);
-                await videoRef.put(videoFile);
-                videoUrl = await videoRef.getDownloadURL();
+                if (videoFile.size > 5 * 1024 * 1024) {
+                    alert('حجم الفيديو كبير جداً. الرجاء اختيار فيديو أصغر (أقل من 5 ميجابايت)');
+                    return;
+                }
+                videoBase64 = await this.convertToBase64(videoFile);
             }
             
             await this.productsRef.push({
                 url: url,
                 image: imageBase64,
-                video: videoUrl,
+                video: videoBase64,
                 description: description,
                 timestamp: firebase.database.ServerValue.TIMESTAMP
             });
@@ -88,14 +89,6 @@ class ProductManager {
 
     async deleteProduct(key) {
         try {
-            const product = await this.productsRef.child(key).once('value');
-            const productData = product.val();
-            
-            if (productData && productData.video) {
-                const videoRef = this.storage.refFromURL(productData.video);
-                await videoRef.delete();
-            }
-            
             await this.productsRef.child(key).remove();
         } catch (error) {
             console.error('Error deleting product:', error);
