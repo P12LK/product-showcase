@@ -43,7 +43,6 @@ class ProductManager {
         try {
             const url = document.getElementById('productUrl').value;
             const imageFile = document.getElementById('productImage').files[0];
-            const videoUrl = document.getElementById('productVideo').value;
             const description = document.getElementById('productDescription').value;
 
             if (!url || !imageFile || !description) {
@@ -56,7 +55,6 @@ class ProductManager {
             await this.productsRef.push({
                 url: url,
                 image: imageBase64,
-                video: videoUrl,
                 description: description,
                 timestamp: firebase.database.ServerValue.TIMESTAMP
             });
@@ -90,7 +88,6 @@ class ProductManager {
     clearInputs() {
         document.getElementById('productUrl').value = '';
         document.getElementById('productImage').value = '';
-        document.getElementById('productVideo').value = '';
         document.getElementById('productDescription').value = '';
     }
 
@@ -114,7 +111,6 @@ class ProductManager {
                         <a href="${product.url}" target="_blank">
                             <img src="${product.image}" alt="صورة المنتج" class="product-image">
                         </a>
-                        ${product.video ? `<iframe src="${product.video}" frameborder="0" allowfullscreen class="product-video"></iframe>` : ''}
                         <div class="product-info">
                             <p class="product-description">${product.description}</p>
                             <button class="delete-btn" onclick="productManager.deleteProduct('${product.key}')">
