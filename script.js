@@ -14,22 +14,40 @@ class ProductManager {
         firebase.initializeApp(firebaseConfig);
         this.database = firebase.database();
         this.productsRef = this.database.ref('products');
+        this.visitorsRef = this.database.ref('visitors');
         this.init();
         this.loadProducts();
+        this.trackVisitor();
     }
 
     init() {
         document.getElementById('addProduct').addEventListener('click', () => this.addProduct());
     }
 
+    async trackVisitor() {
+        const today = new Date().toISOString().split('T')[0];
+        const visitorRef = this.visitorsRef.child(today);
+        
+        const snapshot = await visitorRef.once('value');
+        const currentCount = snapshot.val() || 0;
+        
+        await visitorRef.set(currentCount + 1);
+        
+        this.visitorsRef.child(today).on('value', (snapshot) => {
+            const count = snapshot.val() || 0;
+            document.getElementById('visitorCount').textContent = count;
+        });
+    }
+
     async addProduct() {
         try {
             const url = document.getElementById('productUrl').value;
             const imageFile = document.getElementById('productImage').files[0];
+            const videoUrl = document.getElementById('productVideo').value;
             const description = document.getElementById('productDescription').value;
 
             if (!url || !imageFile || !description) {
-                alert('الرجاء ملء جميع الحقول');
+                alert('الرجاء ملء جميع الحقول المطلوبة');
                 return;
             }
 
@@ -38,6 +56,7 @@ class ProductManager {
             await this.productsRef.push({
                 url: url,
                 image: imageBase64,
+                video: videoUrl || '',
                 description: description,
                 timestamp: firebase.database.ServerValue.TIMESTAMP
             });
@@ -71,6 +90,7 @@ class ProductManager {
     clearInputs() {
         document.getElementById('productUrl').value = '';
         document.getElementById('productImage').value = '';
+        document.getElementById('productVideo').value = '';
         document.getElementById('productDescription').value = '';
     }
 
@@ -94,6 +114,7 @@ class ProductManager {
                         <a href="${product.url}" target="_blank">
                             <img src="${product.image}" alt="صورة المنتج" class="product-image">
                         </a>
+                        ${product.video ? `<div class="video-container"><iframe src="${product.video}" frameborder="0" allowfullscreen class="product-video"></iframe></div>` : ''}
                         <div class="product-info">
                             <p class="product-description">${product.description}</p>
                             <button class="delete-btn" onclick="productManager.deleteProduct('${product.key}')">
