@@ -43,7 +43,7 @@ class ProductManager {
         try {
             const url = document.getElementById('productUrl').value;
             const imageFile = document.getElementById('productImage').files[0];
-            const videoUrl = document.getElementById('productVideo').value;
+            const videoFile = document.getElementById('productVideo').files[0];
             const description = document.getElementById('productDescription').value;
 
             if (!url || !imageFile || !description) {
@@ -51,12 +51,16 @@ class ProductManager {
                 return;
             }
 
-            const imageBase64 = await this.convertImageToBase64(imageFile);
+            const imageBase64 = await this.convertToBase64(imageFile);
+            let videoBase64 = '';
+            if (videoFile) {
+                videoBase64 = await this.convertToBase64(videoFile);
+            }
             
             await this.productsRef.push({
                 url: url,
                 image: imageBase64,
-                video: videoUrl || '',
+                video: videoBase64,
                 description: description,
                 timestamp: firebase.database.ServerValue.TIMESTAMP
             });
@@ -69,7 +73,7 @@ class ProductManager {
         }
     }
 
-    convertImageToBase64(file) {
+    convertToBase64(file) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = () => resolve(reader.result);
@@ -114,7 +118,7 @@ class ProductManager {
                         <a href="${product.url}" target="_blank">
                             <img src="${product.image}" alt="صورة المنتج" class="product-image">
                         </a>
-                        ${product.video ? `<div class="video-container"><iframe src="${product.video}" frameborder="0" allowfullscreen class="product-video"></iframe></div>` : ''}
+                        ${product.video ? `<div class="video-container"><video src="${product.video}" controls class="product-video"></video></div>` : ''}
                         <div class="product-info">
                             <p class="product-description">${product.description}</p>
                             <button class="delete-btn" onclick="productManager.deleteProduct('${product.key}')">
