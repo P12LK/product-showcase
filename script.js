@@ -11,7 +11,9 @@ const firebaseConfig = {
 
 class ProductManager {
     constructor() {
-        firebase.initializeApp(firebaseConfig);
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
         this.database = firebase.database();
         this.storage = firebase.storage();
         this.productsRef = this.database.ref('products');
@@ -34,14 +36,12 @@ class ProductManager {
                 return;
             }
 
-            // Upload image to Firebase Storage
             const timestamp = Date.now();
             const storageRef = this.storage.ref();
             const imageRef = storageRef.child(`products/${timestamp}_${imageFile.name}`);
             const snapshot = await imageRef.put(imageFile);
             const imageUrl = await snapshot.ref.getDownloadURL();
 
-            // Save product data to Realtime Database
             await this.productsRef.push({
                 url: url,
                 imageUrl: imageUrl,
@@ -59,10 +59,7 @@ class ProductManager {
 
     async deleteProduct(key, imageUrl) {
         try {
-            // Delete from Realtime Database
             await this.productsRef.child(key).remove();
-
-            // Delete from Storage if URL exists
             if (imageUrl) {
                 const imageRef = this.storage.refFromURL(imageUrl);
                 await imageRef.delete();
