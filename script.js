@@ -11,11 +11,8 @@ const firebaseConfig = {
 
 class ProductManager {
     constructor() {
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
+        firebase.initializeApp(firebaseConfig);
         this.database = firebase.database();
-        this.storage = firebase.storage();
         this.productsRef = this.database.ref('products');
         this.init();
         this.loadProducts();
@@ -36,17 +33,13 @@ class ProductManager {
                 return;
             }
 
-            const timestamp = Date.now();
-            const storageRef = this.storage.ref();
-            const imageRef = storageRef.child(`products/${timestamp}_${imageFile.name}`);
-            const snapshot = await imageRef.put(imageFile);
-            const imageUrl = await snapshot.ref.getDownloadURL();
-
+            const imageBase64 = await this.convertImageToBase64(imageFile);
+            
             await this.productsRef.push({
                 url: url,
-                imageUrl: imageUrl,
+                image: imageBase64,
                 description: description,
-                timestamp: timestamp
+                timestamp: firebase.database.ServerValue.TIMESTAMP
             });
 
             this.clearInputs();
@@ -57,13 +50,18 @@ class ProductManager {
         }
     }
 
-    async deleteProduct(key, imageUrl) {
+    convertImageToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
+    async deleteProduct(key) {
         try {
             await this.productsRef.child(key).remove();
-            if (imageUrl) {
-                const imageRef = this.storage.refFromURL(imageUrl);
-                await imageRef.delete();
-            }
         } catch (error) {
             console.error('Error deleting product:', error);
             alert('حدث خطأ أثناء حذف المنتج');
@@ -94,11 +92,11 @@ class ProductManager {
                     productElement.className = 'product-card';
                     productElement.innerHTML = `
                         <a href="${product.url}" target="_blank">
-                            <img src="${product.imageUrl}" alt="صورة المنتج" class="product-image">
+                            <img src="${product.image}" alt="صورة المنتج" class="product-image">
                         </a>
                         <div class="product-info">
                             <p class="product-description">${product.description}</p>
-                            <button class="delete-btn" onclick="productManager.deleteProduct('${product.key}', '${product.imageUrl}')">
+                            <button class="delete-btn" onclick="productManager.deleteProduct('${product.key}')">
                                 حذف المنتج
                             </button>
                         </div>
