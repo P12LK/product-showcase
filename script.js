@@ -1,44 +1,4 @@
-const firebaseConfig = {
-    apiKey: "AIzaSyBCIjcNPlUVDjFY27XqlkVOEdBCNpwbznc",
-    authDomain: "product-showcase-3c038.firebaseapp.com",
-    databaseURL: "https://product-showcase-3c038-default-rtdb.firebaseio.com",
-    projectId: "product-showcase-3c038",
-    storageBucket: "product-showcase-3c038.appspot.com",
-    messagingSenderId: "916469503161",
-    appId: "1:916469503161:web:e44412c3f844d1b00c7768",
-    measurementId: "G-QQEH2G25NV"
-};
-
-class ProductManager {
-    constructor() {
-        firebase.initializeApp(firebaseConfig);
-        this.database = firebase.database();
-        this.productsRef = this.database.ref('products');
-        this.visitorsRef = this.database.ref('visitors');
-        this.init();
-        this.loadProducts();
-        this.trackVisitor();
-    }
-
-    init() {
-        document.getElementById('addProduct').addEventListener('click', () => this.addProduct());
-    }
-
-    async trackVisitor() {
-        const today = new Date().toISOString().split('T')[0];
-        const visitorRef = this.visitorsRef.child(today);
-        
-        const snapshot = await visitorRef.once('value');
-        const currentCount = snapshot.val() || 0;
-        
-        await visitorRef.set(currentCount + 1);
-        
-        this.visitorsRef.child(today).on('value', (snapshot) => {
-            const count = snapshot.val() || 0;
-            document.getElementById('visitorCount').textContent = count;
-        });
-    }
-
+// ... في دالة addProduct ...
     async addProduct() {
         try {
             const url = document.getElementById('productUrl').value;
@@ -51,7 +11,21 @@ class ProductManager {
                 return;
             }
 
-            const imageBase64 = await this.convertToBase64(imageFile);
+            // التحقق من حجم الملفات
+            if (imageFile.size > 2 * 1024 * 1024) { // 2MB للصورة
+                alert('حجم الصورة كبير جداً. الرجاء اختيار صورة أصغر (أقل من 2 ميجابايت)');
+                return;
+            }
+
+            if (videoFile && videoFile.size > 10 * 1024 * 1024) { // 10MB للفيديو
+                alert('حجم الفيديو كبير جداً. الرجاء اختيار فيديو أصغر (أقل من 10 ميجابايت)');
+                return;
+            }
+
+            // ضغط الصورة قبل التحويل
+            const compressedImage = await this.compressImage(imageFile);
+            const imageBase64 = await this.convertToBase64(compressedImage);
+            
             let videoBase64 = '';
             if (videoFile) {
                 videoBase64 = await this.convertToBase64(videoFile);
@@ -73,64 +47,33 @@ class ProductManager {
         }
     }
 
-    convertToBase64(file) {
-        return new Promise((resolve, reject) => {
+    // إضافة دالة لضغط الصور
+    async compressImage(file) {
+        return new Promise((resolve) => {
             const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = reject;
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    // تقليل حجم الصورة إذا كانت كبيرة
+                    if (width > 800) {
+                        height = Math.round((height * 800) / width);
+                        width = 800;
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    canvas.toBlob(resolve, 'image/jpeg', 0.7);
+                };
+                img.src = e.target.result;
+            };
             reader.readAsDataURL(file);
         });
     }
-
-    async deleteProduct(key) {
-        try {
-            await this.productsRef.child(key).remove();
-        } catch (error) {
-            console.error('Error deleting product:', error);
-            alert('حدث خطأ أثناء حذف المنتج');
-        }
-    }
-
-    clearInputs() {
-        document.getElementById('productUrl').value = '';
-        document.getElementById('productImage').value = '';
-        document.getElementById('productVideo').value = '';
-        document.getElementById('productDescription').value = '';
-    }
-
-    loadProducts() {
-        this.productsRef.on('value', (snapshot) => {
-            const container = document.getElementById('productsContainer');
-            container.innerHTML = '';
-            
-            if (snapshot.exists()) {
-                const products = [];
-                snapshot.forEach((child) => {
-                    products.push({ key: child.key, ...child.val() });
-                });
-                
-                products.sort((a, b) => b.timestamp - a.timestamp);
-                
-                products.forEach(product => {
-                    const productElement = document.createElement('div');
-                    productElement.className = 'product-card';
-                    productElement.innerHTML = `
-                        <a href="${product.url}" target="_blank">
-                            <img src="${product.image}" alt="صورة المنتج" class="product-image">
-                        </a>
-                        ${product.video ? `<video src="${product.video}" controls class="product-video"></video>` : ''}
-                        <div class="product-info">
-                            <p class="product-description">${product.description}</p>
-                            <button class="delete-btn" onclick="productManager.deleteProduct('${product.key}')">
-                                حذف المنتج
-                            </button>
-                        </div>
-                    `;
-                    container.appendChild(productElement);
-                });
-            }
-        });
-    }
-}
-
-const productManager = new ProductManager();
