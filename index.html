@@ -15,17 +15,18 @@
             <div class="stats">
                 <div class="stat-item">👁️ <span id="visitorCount">0</span> زائر</div>
             </div>
+            <div class="admin-controls">
+                <button onclick="productManager.loginAsAdmin()" class="admin-btn">تسجيل دخول المسؤول</button>
+                <button onclick="productManager.logoutAdmin()" class="admin-btn">تسجيل خروج</button>
+            </div>
         </div>
     </div>
 
     <div class="container">
-        <div class="input-section">
+        <div class="input-section" id="adminPanel" style="display: none;">
             <input type="text" id="productUrl" class="input-field" placeholder="رابط المنتج">
             <div class="file-upload">
                 <input type="file" id="productImage" accept="image/*">
-            </div>
-            <div class="file-upload">
-                <input type="file" id="productVideo" accept="video/*">
             </div>
             <textarea id="productDescription" class="input-field" placeholder="وصف المنتج"></textarea>
             <button id="addProduct" class="add-button">إضافة منتج</button>
@@ -36,7 +37,6 @@
 
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

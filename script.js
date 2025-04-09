@@ -18,10 +18,16 @@ class ProductManager {
         this.init();
         this.loadProducts();
         this.trackVisitor();
+        this.checkAdminStatus();
     }
 
     init() {
         document.getElementById('addProduct').addEventListener('click', () => this.addProduct());
+    }
+
+    checkAdminStatus() {
+        const isAdmin = localStorage.getItem('adminPassword') === 'admin123';
+        document.getElementById('adminPanel').style.display = isAdmin ? 'block' : 'none';
     }
 
     async trackVisitor() {
@@ -43,7 +49,6 @@ class ProductManager {
         try {
             const url = document.getElementById('productUrl').value;
             const imageFile = document.getElementById('productImage').files[0];
-            const videoFile = document.getElementById('productVideo').files[0];
             const description = document.getElementById('productDescription').value;
 
             if (!url || !imageFile || !description) {
@@ -52,20 +57,10 @@ class ProductManager {
             }
 
             const imageBase64 = await this.convertToBase64(imageFile);
-            let videoBase64 = '';
-            
-            if (videoFile) {
-                if (videoFile.size > 5 * 1024 * 1024) {
-                    alert('حجم الفيديو كبير جداً. الرجاء اختيار فيديو أصغر (أقل من 5 ميجابايت)');
-                    return;
-                }
-                videoBase64 = await this.convertToBase64(videoFile);
-            }
             
             await this.productsRef.push({
                 url: url,
                 image: imageBase64,
-                video: videoBase64,
                 description: description,
                 timestamp: firebase.database.ServerValue.TIMESTAMP
             });
@@ -88,6 +83,11 @@ class ProductManager {
     }
 
     async deleteProduct(key) {
+        if (localStorage.getItem('adminPassword') !== 'admin123') {
+            alert('عذراً، فقط المسؤول يمكنه حذف المنتجات');
+            return;
+        }
+        
         try {
             await this.productsRef.child(key).remove();
         } catch (error) {
@@ -99,8 +99,26 @@ class ProductManager {
     clearInputs() {
         document.getElementById('productUrl').value = '';
         document.getElementById('productImage').value = '';
-        document.getElementById('productVideo').value = '';
         document.getElementById('productDescription').value = '';
+    }
+
+    loginAsAdmin() {
+        const password = prompt('أدخل كلمة المرور للمسؤول:');
+        if (password === 'admin123') {
+            localStorage.setItem('adminPassword', password);
+            this.checkAdminStatus();
+            this.loadProducts();
+            alert('تم تسجيل الدخول بنجاح');
+        } else {
+            alert('كلمة المرور غير صحيحة');
+        }
+    }
+
+    logoutAdmin() {
+        localStorage.removeItem('adminPassword');
+        this.checkAdminStatus();
+        this.loadProducts();
+        alert('تم تسجيل الخروج بنجاح');
     }
 
     loadProducts() {
@@ -116,6 +134,8 @@ class ProductManager {
                 
                 products.sort((a, b) => b.timestamp - a.timestamp);
                 
+                const isAdmin = localStorage.getItem('adminPassword') === 'admin123';
+                
                 products.forEach(product => {
                     const productElement = document.createElement('div');
                     productElement.className = 'product-card';
@@ -123,12 +143,13 @@ class ProductManager {
                         <a href="${product.url}" target="_blank">
                             <img src="${product.image}" alt="صورة المنتج" class="product-image">
                         </a>
-                        ${product.video ? `<video src="${product.video}" controls class="product-video"></video>` : ''}
                         <div class="product-info">
                             <p class="product-description">${product.description}</p>
-                            <button class="delete-btn" onclick="productManager.deleteProduct('${product.key}')">
-                                حذف المنتج
-                            </button>
+                            ${isAdmin ? `
+                                <button class="delete-btn" onclick="productManager.deleteProduct('${product.key}')">
+                                    حذف المنتج
+                                </button>
+                            ` : ''}
                         </div>
                     `;
                     container.appendChild(productElement);
